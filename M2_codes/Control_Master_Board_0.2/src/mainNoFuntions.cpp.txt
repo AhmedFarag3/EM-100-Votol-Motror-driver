@@ -1,0 +1,418 @@
+
+#include <ros.h>
+#include <std_msgs/String.h>
+#include <std_msgs/Int16.h>
+
+#define MODE_FREE_PIN          4  // Any digital output pin
+#define MODE_SPIN_PIN          5  // Any digital output pin
+#define MODE_STOP_PIN          6  // Any digital output pin
+#define ACCELERATION_LED_PIN   7  // Any PWM Pin
+#define FORWARD_LED_PIN        8  // Any digital output pin
+#define BACK_LED_PIN           9  // Any digital output pin
+#define RIGHT_LED_PIN          10 // Any digital output pin
+#define LEFT_LED_PIN           11 // Any digital output pin
+#define SubLED                 13
+
+// #### BL Wheel ####
+#define rlyfw_bl      12 // (white 12)////
+#define rlyrev_bl     26 // (orange 14) ///////
+#define rlybrake_bl   30 // (yellowish 25)///////
+#define throttle_bl   6 // analog output to control the speed (green 3)
+#define brakeana_bl   7 // analog output to control the brake (Brown 2)
+// #define footsw_bl     4 // define foot switch pin (gray 15)
+// #define speedmeter_bl  // measure the motor speed (gray 8)
+
+// #### BR Wheel ####
+#define rlyfw_br      32 // (white 12)////
+#define rlyrev_br     31 // (orange 14) ///////
+#define rlybrake_br   22 // (yellowish 25)///////
+#define throttle_br   14 // analog output to control the speed (green 3)
+#define brakeana_br   13 // analog output to control the brake (Brown 2)
+
+// #### FL Wheel ####
+#define rlyfw_fl      17 // (white 12)////
+#define rlyrev_fl     16 // (orange 14) ///////
+#define rlybrake_fl   30 // (yellowish 25)///////
+#define throttle_fl   2 // analog output to control the speed (green 3)
+#define brakeana_fl   3 // analog output to control the brake (Brown 2)
+
+// #### FR Wheel ####
+#define rlyfw_fr      33 // (white 12)////
+#define rlyrev_fr     20 // (orange 14) ///////
+#define rlybrake_fr   29 // (yellowish 25)///////
+#define throttle_fr   15 // analog output to control the speed (green 3)
+#define brakeana_fr   1 // analog output to control the brake (Brown 2)
+
+// const unsigned int maxfwd = 160;
+// const unsigned int minfwd = 60;
+// const unsigned int maxrev = 160;
+// const unsigned int minrev = 60;
+// const unsigned int maxbrake = 250;
+// const unsigned int minbrake = 20;
+
+const unsigned int maxfwd = 255;
+const unsigned int minfwd = 0;
+const unsigned int maxrev = 255;
+const unsigned int minrev = 0;
+const unsigned int maxbrake = 250;
+const unsigned int minbrake = 20;
+
+String freeModeStr = "q"; // TODO: Change "q" to "freeMode" after app update
+String spinModeStr = "w"; // TODO: Change "w" to "spinMode" after app update
+String brakeStr    = "e"; // TODO: Change "e" to "brake" after app update
+
+ros::NodeHandle  nh;
+
+// std_msgs::String str;
+// String str2 = String(str.data);
+// int x = str2.toInt();
+
+//Use f: forward, b: back, r: right, l: left, to drive the robot
+/*
+void MotionCallback( const std_msgs::String& msg) {
+  String Received_Data = String(msg.data);
+  
+  //  nh.loginfo("String Data: ");
+  if (Received_Data == "f") {
+    digitalWrite(FORWARD_LED_PIN, HIGH);
+    digitalWrite(BACK_LED_PIN   , LOW);
+    digitalWrite(RIGHT_LED_PIN  , LOW);
+    digitalWrite(LEFT_LED_PIN   , LOW);
+    //      delay(1000);
+    nh.loginfo("Moving forward ...");
+  }
+  else if ( Received_Data == "b") {
+    digitalWrite(FORWARD_LED_PIN, LOW);
+    digitalWrite(BACK_LED_PIN   , HIGH);
+    digitalWrite(RIGHT_LED_PIN  , LOW);
+    digitalWrite(LEFT_LED_PIN   , LOW);
+    //      delay(1000);
+    nh.loginfo("Moving back ...");
+  }
+  else if ( Received_Data == "r") {
+
+    digitalWrite(FORWARD_LED_PIN, LOW);
+    digitalWrite(BACK_LED_PIN   , LOW);
+    digitalWrite(RIGHT_LED_PIN  , HIGH);
+    digitalWrite(LEFT_LED_PIN   , LOW);
+    //      delay(1000);
+    nh.loginfo("Moving right ...");
+  }
+  else if ( Received_Data == "l") {
+
+    digitalWrite(FORWARD_LED_PIN, LOW);
+    digitalWrite(BACK_LED_PIN   , LOW);
+    digitalWrite(RIGHT_LED_PIN  , LOW);
+    digitalWrite(LEFT_LED_PIN   , HIGH);
+    //      delay(1000);
+    nh.loginfo("Moving left ...");
+  }
+  else {
+    digitalWrite(FORWARD_LED_PIN, LOW);
+    digitalWrite(BACK_LED_PIN   , LOW);
+    digitalWrite(RIGHT_LED_PIN  , LOW);
+    digitalWrite(LEFT_LED_PIN   , LOW);
+    //node_handle.loginfo("Doing nothing ...");
+  }
+}
+*/
+String g_mode_msg = "";
+// "Select a mode (q: Free Mode, w: 360 Spin Mode, e: Stop): "
+void ModeCallback(const std_msgs::String& mode_msg)
+{
+  String msg = String(mode_msg.data);
+  g_mode_msg = msg;
+  // nh.loginfo(mode_msg.data);
+  nh.loginfo((String("g_mode_msg = ")+(g_mode_msg.c_str())).c_str());
+  
+  if (msg == brakeStr)  
+  {
+    digitalWrite(rlybrake_bl, HIGH); // neutral , brake is on
+    analogWrite(throttle_bl, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_bl, maxbrake);
+
+    digitalWrite(rlybrake_br, HIGH); // neutral , brake is on
+    analogWrite(throttle_br, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_br, maxbrake);
+
+    digitalWrite(rlybrake_fl, HIGH); // neutral , brake is on
+    analogWrite(throttle_fl, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_fl, maxbrake);
+
+    digitalWrite(rlybrake_fr, HIGH); // neutral , brake is on
+    analogWrite(throttle_fr, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_fr, maxbrake);
+    
+    nh.loginfo("Brake Mode ...");
+  }
+  else
+  {
+    if (msg == freeModeStr)
+    {
+      digitalWrite(MODE_FREE_PIN, HIGH);
+      digitalWrite(MODE_SPIN_PIN, LOW);
+      digitalWrite(MODE_STOP_PIN, LOW);
+      
+      nh.loginfo("Free Drive Mode ...");
+    }
+    else if (msg == spinModeStr)
+    {
+      // digitalWrite(MODE_FREE_PIN, LOW);
+      // digitalWrite(MODE_SPIN_PIN, HIGH);
+      // digitalWrite(MODE_STOP_PIN, LOW);
+      
+      // TODO: Set steering angles for 360 spin mode
+      // TODO: Set hub wheel directions for right or left spinning
+      
+      nh.loginfo("360 Spin Mode ...");
+    }
+    else // if garbage is sent, enable brake
+    {
+      digitalWrite(rlybrake_bl, HIGH); // neutral , brake is on
+      analogWrite(throttle_bl, 1); // throttle zero makes a problem so never set it to zero
+      analogWrite(brakeana_bl, maxbrake);
+
+      digitalWrite(rlybrake_br, HIGH); // neutral , brake is on
+      analogWrite(throttle_br, 1); // throttle zero makes a problem so never set it to zero
+      analogWrite(brakeana_br, maxbrake);
+
+      digitalWrite(rlybrake_fl, HIGH); // neutral , brake is on
+      analogWrite(throttle_fl, 1); // throttle zero makes a problem so never set it to zero
+      analogWrite(brakeana_fl, maxbrake);
+
+      digitalWrite(rlybrake_fr, HIGH); // neutral , brake is on
+      analogWrite(throttle_fr, 1); // throttle zero makes a problem so never set it to zero
+      analogWrite(brakeana_fr, maxbrake);
+      
+      nh.loginfo("Brake Mode ...");
+    }
+  }
+}
+
+char longi_dir = 'f';
+//"Enter acceleration value from 0 to 100"
+void AccelerationCallback(const std_msgs::String& acceleration_msg) 
+{
+  int acceleration_msg_int = String(acceleration_msg.data).toInt();
+  /*if (g_mode_msg == brakeStr)
+  {
+    digitalWrite(rlybrake_bl, HIGH); // neutral , brake is on
+    analogWrite(throttle_bl, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_bl, maxbrake);
+
+    digitalWrite(rlybrake_br, HIGH); // neutral , brake is on
+    analogWrite(throttle_br, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_br, maxbrake);
+
+    digitalWrite(rlybrake_fl, HIGH); // neutral , brake is on
+    analogWrite(throttle_fl, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_fl, maxbrake);
+
+    digitalWrite(rlybrake_fr, HIGH); // neutral , brake is on
+    analogWrite(throttle_fr, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_fr, maxbrake);
+    
+    nh.loginfo("Brake Mode ...");
+  }
+  else */
+  if(g_mode_msg == freeModeStr)
+  {
+    if (acceleration_msg_int <= 5) // TODO: change to -5 to 5
+    {
+      digitalWrite(rlybrake_bl, HIGH); // neutral , brake is on
+      analogWrite(throttle_bl, 1); // throttle zero makes a problem so never set it to zero
+      analogWrite(brakeana_bl, maxbrake);
+
+      digitalWrite(rlybrake_br, HIGH); // neutral , brake is on
+      analogWrite(throttle_br, 1); // throttle zero makes a problem so never set it to zero
+      analogWrite(brakeana_br, maxbrake);
+
+      digitalWrite(rlybrake_fl, HIGH); // neutral , brake is on
+      analogWrite(throttle_fl, 1); // throttle zero makes a problem so never set it to zero
+      analogWrite(brakeana_fl, maxbrake);
+
+      digitalWrite(rlybrake_fr, HIGH); // neutral , brake is on
+      analogWrite(throttle_fr, 1); // throttle zero makes a problem so never set it to zero
+      analogWrite(brakeana_fr, maxbrake);
+
+      nh.loginfo("\n");
+      nh.loginfo("############# Throttle Joystick Dead Zone ################");
+      nh.loginfo((String("Throttle% = ") + String(acceleration_msg_int).c_str()).c_str());
+    }
+    else if (5 < acceleration_msg_int && 100 >= acceleration_msg_int)
+    { // TODO: change this block to check if throttle > 5 and <= 100 ---> move forward
+      //       and if throttle is < -5 and >= -100 ---> move backward
+      //       and eliminate characters 'f' and 'b'
+      nh.loginfo("\n");
+      nh.loginfo("############# Moving #############");
+      if (longi_dir == 'f')
+      {
+        nh.loginfo("############# Forward #############");
+        
+        digitalWrite(rlyfw_bl, LOW);
+        digitalWrite(rlyrev_bl, HIGH);
+        digitalWrite(rlybrake_bl, LOW); // brake is off
+
+        digitalWrite(rlyfw_br, LOW);
+        digitalWrite(rlyrev_br, HIGH);
+        digitalWrite(rlybrake_br, LOW); // brake is off
+
+        digitalWrite(rlyfw_fl, LOW);
+        digitalWrite(rlyrev_fl, HIGH);
+        digitalWrite(rlybrake_fl, LOW); // brake is off
+
+        digitalWrite(rlyfw_fr, LOW);
+        digitalWrite(rlyrev_fr, HIGH);
+        digitalWrite(rlybrake_fr, LOW); // brake is off
+        
+        unsigned int current_throttle_PWM = map(acceleration_msg_int, 0, 100, minfwd, maxfwd);
+        
+        analogWrite(throttle_bl, current_throttle_PWM);
+        analogWrite(throttle_fl, current_throttle_PWM);
+        analogWrite(throttle_br, current_throttle_PWM);
+        analogWrite(throttle_fr, current_throttle_PWM);
+
+        nh.loginfo((String("Throttle% = ") + String(acceleration_msg_int).c_str()).c_str());
+        
+        longi_dir = 'b';
+      }
+      else if (longi_dir == 'b')
+      {
+        nh.loginfo("############# Backward #############");
+        digitalWrite(rlyfw_bl, HIGH);
+        digitalWrite(rlyrev_bl, LOW);
+        digitalWrite(rlybrake_bl, LOW); // brake is off
+
+        digitalWrite(rlyfw_br, HIGH);
+        digitalWrite(rlyrev_br, LOW);
+        digitalWrite(rlybrake_br, LOW); // brake is off
+
+        digitalWrite(rlyfw_fl, HIGH);
+        digitalWrite(rlyrev_fl, LOW);
+        digitalWrite(rlybrake_fl, LOW); // brake is off
+
+        digitalWrite(rlyfw_fr, HIGH);
+        digitalWrite(rlyrev_fr, LOW);
+        digitalWrite(rlybrake_fr, LOW); // brake is off
+        
+        // TODO: change mapping values to map between -100 (min), 0 (max)
+        unsigned int current_throttle_PWM = map(acceleration_msg_int, 0, 100, minrev, maxrev);
+        
+        analogWrite(throttle_br, current_throttle_PWM);
+        analogWrite(throttle_fr, current_throttle_PWM);
+        analogWrite(throttle_bl, current_throttle_PWM);
+        analogWrite(throttle_fl, current_throttle_PWM);
+        
+        nh.loginfo((String("Throttle% = ") + String(acceleration_msg_int).c_str()).c_str());
+
+        longi_dir = 'f';
+      }
+      else {nh.loginfo("############# ERRORRRRRRRRR #############");}
+    }
+    else
+      nh.loginfo("############# ERROR #############");
+      // Serial.print(acceleration_msg.data);
+  }
+  else if (g_mode_msg == spinModeStr)
+  {
+    // TODO
+  }
+  else 
+  {
+    digitalWrite(rlybrake_bl, HIGH); // neutral , brake is on
+    analogWrite(throttle_bl, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_bl, maxbrake);
+
+    digitalWrite(rlybrake_br, HIGH); // neutral , brake is on
+    analogWrite(throttle_br, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_br, maxbrake);
+
+    digitalWrite(rlybrake_fl, HIGH); // neutral , brake is on
+    analogWrite(throttle_fl, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_fl, maxbrake);
+
+    digitalWrite(rlybrake_fr, HIGH); // neutral , brake is on
+    analogWrite(throttle_fr, 1); // throttle zero makes a problem so never set it to zero
+    analogWrite(brakeana_fr, maxbrake);
+
+    nh.loginfo("\n");
+    nh.loginfo("############# Brake ################\n############# NOISE #############");
+  }
+  
+}
+
+std_msgs::Int16 Vehicle_Battery;
+std_msgs::Int16 Vehicle_Acceleration;
+
+ros::Publisher chatter_batt("Vehicle_Battery", &Vehicle_Battery);
+ros::Publisher chatter_acc("Vehicle_Acceleration", &Vehicle_Acceleration);
+
+ros::Subscriber<std_msgs::String> mode_subscriber("/Motion", &ModeCallback);
+// ros::Subscriber<std_msgs::String> motion_subscriber("/Direction", &MotionCallback );
+ros::Subscriber<std_msgs::String> acceleration_subscriber("/Accel", &AccelerationCallback);
+
+void setup() {
+  pinMode(MODE_FREE_PIN       , OUTPUT);
+  pinMode(MODE_SPIN_PIN       , OUTPUT);
+  pinMode(MODE_STOP_PIN       , OUTPUT);
+  pinMode(ACCELERATION_LED_PIN, OUTPUT);
+  pinMode(FORWARD_LED_PIN     , OUTPUT);
+  pinMode(BACK_LED_PIN        , OUTPUT);
+  pinMode(LEFT_LED_PIN        , OUTPUT);
+  pinMode(RIGHT_LED_PIN       , OUTPUT);
+  pinMode(SubLED              , OUTPUT);
+
+  // #### BL Wheel ####
+  pinMode(rlyfw_bl, OUTPUT);
+  pinMode(rlyrev_bl, OUTPUT);
+  pinMode(rlybrake_bl, OUTPUT);
+  pinMode(throttle_bl, OUTPUT);
+  pinMode(brakeana_bl, OUTPUT);
+
+  // #### BR Wheel ####
+  pinMode(rlyfw_br, OUTPUT);
+  pinMode(rlyrev_br, OUTPUT);
+  pinMode(rlybrake_br, OUTPUT);
+  pinMode(throttle_br, OUTPUT);
+  pinMode(brakeana_br, OUTPUT);
+
+  // #### FL Wheel ####
+  pinMode(rlyfw_fl, OUTPUT);
+  pinMode(rlyrev_fl, OUTPUT);
+  pinMode(rlybrake_fl, OUTPUT);
+  pinMode(throttle_fl, OUTPUT);
+  pinMode(brakeana_fl, OUTPUT);
+
+  // #### FR Wheel ####
+  pinMode(rlyfw_fr, OUTPUT);
+  pinMode(rlyrev_fr, OUTPUT);
+  pinMode(rlybrake_fr, OUTPUT);
+  pinMode(throttle_fr, OUTPUT);
+  pinMode(brakeana_fr, OUTPUT);
+
+  // #### END BL Wheel ####
+
+  nh.initNode();// Initialize node handle
+  // nh.subscribe(motion_subscriber);
+  nh.subscribe(mode_subscriber);
+  nh.subscribe(acceleration_subscriber);
+
+  nh.advertise(chatter_batt);
+  nh.advertise(chatter_acc);
+ Serial.begin(3000000);
+
+}
+
+void loop() {
+  // longi_dir = *longitudinal_direction;
+
+  Vehicle_Battery.data = random(0, 100);
+  Vehicle_Acceleration.data = random(0, 10);
+
+  chatter_batt.publish(&Vehicle_Battery);
+  chatter_acc.publish(&Vehicle_Acceleration);
+
+//  delay(10);
+  nh.spinOnce();
+    delay(500);
+}

@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "cmath": "cpp",
+        "*.tcc": "cpp",
+        "string": "cpp",
+        "*.tpp": "cpp",
+        "functional": "cpp",
+        "random": "cpp",
+        "limits": "cpp"
+    },
+    "ros.distro": "noetic"
+}

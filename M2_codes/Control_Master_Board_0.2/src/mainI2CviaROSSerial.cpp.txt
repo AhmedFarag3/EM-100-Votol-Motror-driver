@@ -1,0 +1,243 @@
+/*
+ * MASTER CONTROL TEENSY CODE
+ * ------------------
+ * Subscribe to topics from ROS network
+ * and send them through I2C
+ *
+ */
+
+#include <i2c_topics.h>
+
+void receiveEvent(int howMany);
+
+// ros::NodeHandle nh;
+
+void DriveModeCb(const std_msgs::String &mode_msg)
+{
+  // String msg = String(mode_msg.data).trim();
+  g_mode_msg = String(mode_msg.data).trim();
+  i2c_drive_mode(drive_i2c_addr, steer_i2c_addr, g_mode_msg);
+
+  // Debugging
+  nh.loginfo((String("Drive Mode = ") + (g_mode_msg.c_str())).c_str());
+}
+
+void EmergencyBrakeCb(const std_msgs::Int16 &em_brake_msg)
+{
+  g_emergency_brake_msg = int(em_brake_msg.data);
+  // nh.loginfo((String("g_mode_msg = ") + (g_mode_msg.c_str())).c_str());
+  i2c_emergency_brake(drive_i2c_addr, g_emergency_brake_msg);
+
+  // Debugging
+  nh.loginfo((String("Emergency Brake State = ") + String(g_emergency_brake_msg).c_str()).c_str());
+}
+
+void ThrottleCb(const std_msgs::Int16 &throttle_msg)
+{
+  i2c_throttle(drive_i2c_addr, int(throttle_msg.data));
+
+  // Debugging
+  nh.loginfo((String("Throttle = ") + String(throttle_msg.data).c_str()).c_str());
+}
+
+void SteeringCb(const std_msgs::Int16 &steering_msg)
+{
+  i2c_steering(steer_i2c_addr, int(steering_msg.data));
+
+  // Debugging
+  nh.loginfo((String("Steering = ") + String(steering_msg.data).c_str()).c_str());
+}
+
+// ######################## SENSROS ########################
+
+// void Garmin1Cb(const sensor_msgs::Range &garmin1_msg)
+// {
+//   i2c_garmin(drive_i2c_addr, (int)((garmin1_msg.range) * 100), 1); // send data as an integer and multiply by 100 (in cm) to preserve precesion
+//   // Debugging
+//   // nh.loginfo((String("Garmin 1 = ") + String(garmin1_msg.range).c_str()).c_str());
+// }
+
+// void Garmin2Cb(const sensor_msgs::Range &garmin2_msg)
+// {
+//   i2c_garmin(drive_i2c_addr, (int)((garmin2_msg.range) * 100), 2); // send data as an integer and multiply by 100 (in cm) to preserve precesion
+//   // Debugging
+//   // nh.loginfo((String("Garmin 2 = ") + String(garmin2_msg.range).c_str()).c_str());
+// }
+
+// void Garmin3Cb(const sensor_msgs::Range &garmin3_msg)
+// {
+//   i2c_garmin(drive_i2c_addr, (int)((garmin3_msg.range) * 100), 3); // send data as an integer and multiply by 100 (in cm) to preserve precesion
+//   // Debugging
+//   // nh.loginfo((String("Garmin 3 = ") + String(garmin3_msg.range).c_str()).c_str());
+// }
+
+// void Garmin4Cb(const sensor_msgs::Range &garmin4_msg)
+// {
+//   i2c_garmin(drive_i2c_addr, (int)((garmin4_msg.range) * 100), 4); // send data as an integer and multiply by 100 (in cm) to preserve precesion
+//   // Debugging
+//   // nh.loginfo((String("Garmin 4 = ") + String(garmin4_msg.range).c_str()).c_str());
+// }
+
+// void SpotRadar1Cb(const std_msgs::Int16 &spot_radar_msg)
+// {
+//   i2c_spot_radar(drive_i2c_addr, spot_radar_msg.data, 1);
+//   // Debugging
+//   // nh.loginfo((String("Spot Radar 1 = ") + String(spot_radar_msg.data).c_str()).c_str());
+// }
+
+// void SpotRadar2Cb(const std_msgs::Int16 &spot_radar_msg)
+// {
+//   i2c_spot_radar(drive_i2c_addr, spot_radar_msg.data, 2);
+//   // Debugging
+//   // nh.loginfo((String("Spot Radar 2 = ") + String(spot_radar_msg.data).c_str()).c_str());
+// }
+
+// std_msgs::Int16 Vehicle_Battery;
+// std_msgs::Int16 Vehicle_throttle;
+
+// ros::Publisher chatter_batt("Vehicle_Battery", &Vehicle_Battery);
+// ros::Publisher chatter_acc("Vehicle_throttle", &Vehicle_throttle);
+
+ros::Subscriber<std_msgs::String> drive_mode_subscriber("ros_drive_mode", &DriveModeCb);
+ros::Subscriber<std_msgs::Int16> steering_subscriber("ros_steering", &SteeringCb);
+ros::Subscriber<std_msgs::Int16> throttle_subscriber("ros_throttle", &ThrottleCb);
+ros::Subscriber<std_msgs::Int16> emergency_brake_subscriber("ros_emergency_brake", &EmergencyBrakeCb);
+
+// ros::Subscriber<sensor_msgs::Range> garmin1_subscriber("garmin_1", &Garmin1Cb);
+// ros::Subscriber<sensor_msgs::Range> garmin2_subscriber("garmin_2", &Garmin2Cb);
+// ros::Subscriber<sensor_msgs::Range> garmin3_subscriber("garmin_3", &Garmin3Cb);
+// ros::Subscriber<sensor_msgs::Range> garmin4_subscriber("garmin_4", &Garmin4Cb);
+
+// ros::Subscriber<std_msgs::Int16> spot_radar1_subscriber("spot_radar_1", &SpotRadar1Cb);
+// ros::Subscriber<std_msgs::Int16> spot_radar2_subscriber("spot_radar_2", &SpotRadar2Cb);
+
+void setup()
+{
+
+  nh.initNode(); // Initialize node handle
+
+  nh.subscribe(steering_subscriber);
+  nh.subscribe(drive_mode_subscriber);
+  nh.subscribe(throttle_subscriber);
+  nh.subscribe(emergency_brake_subscriber);
+
+  // nh.subscribe(garmin1_subscriber);
+  // nh.subscribe(garmin2_subscriber);
+  // nh.subscribe(garmin3_subscriber);
+  // nh.subscribe(garmin4_subscriber);
+
+  // nh.subscribe(spot_radar1_subscriber);
+  // nh.subscribe(spot_radar2_subscriber);
+
+  // nh.advertise(chatter_batt);
+  // nh.advertise(chatter_acc);
+
+  Serial.begin(3000000);
+
+  // Join I2C_0 bus as master writer (only Wire.h works with master writer)
+  Wire.begin();
+
+  // Join I2C_2 bus as slave receiver (use i2c_device... to receive as)
+  Wire2_T4.begin(6);
+  Wire2_T4.setClock(1000000);
+  Wire2_T4.onReceive(receiveEvent);
+}
+
+void loop()
+{
+  // Vehicle_Battery.data = random(0, 100);
+  // Vehicle_throttle.data = random(0, 10);
+
+  // chatter_batt.publish(&Vehicle_Battery);
+  // chatter_acc.publish(&Vehicle_throttle);
+  // Serial.print(Wire.available());
+
+  nh.spinOnce();
+  delay(1);
+}
+
+
+byte x;
+int y;
+int j;
+int sensors_data_received[4];
+int sensors_data_to_be_sent[4];
+
+void receiveEvent(int howMany)
+{
+  for (int i = 0; i < howMany / 2; i++)
+  {
+    // fill sensors data array (received data)
+    x = Wire2_T4.read();
+    j++;
+    if (j == 1)
+    {
+      y = (x << 8) | Wire2_T4.read();
+      sensors_data_received[i] = y;
+      // Serial.print(y, DEC);
+      // Serial.print(' ');
+      j = 0;
+    }
+  }
+
+  Serial.print("Array = ");
+  for (int i = 0; i < 4; i++)
+  {
+    Serial.printf("%d, ", sensors_data_received[i]);
+  }
+  Serial.println();
+
+  // fill array that will be sent in the receive event for near real time transmission
+  if (i2c_garmin1_flag == sensors_data_received[0])
+  {
+    Garmin1 = sensors_data_received[1];
+    sensors_data_to_be_sent[0] = i2c_garmin1_flag;
+    sensors_data_to_be_sent[1] = Garmin1;
+    Serial.printf("Garmin 1: %0.2f m\n", ((float)Garmin1)/100.0);
+  }
+  else if (i2c_garmin2_flag == sensors_data_received[0])
+  {
+    Garmin2 = sensors_data_received[1];
+    sensors_data_to_be_sent[0] = i2c_garmin2_flag;
+    sensors_data_to_be_sent[1] = Garmin2;
+    Serial.printf("Garmin 2: %0.2f m\n", ((float)Garmin2)/100.0);
+  }
+  else if (i2c_garmin3_flag == sensors_data_received[0])
+  {
+    Garmin3 = sensors_data_received[1];
+    sensors_data_to_be_sent[0] = i2c_garmin3_flag;
+    sensors_data_to_be_sent[1] = Garmin3;
+    Serial.printf("Garmin 3: %0.2f m\n", ((float)Garmin3)/100.0);
+  }
+  else if (i2c_garmin4_flag == sensors_data_received[0])
+  {
+    Garmin4 = sensors_data_received[1];
+    sensors_data_to_be_sent[0] = i2c_garmin4_flag;
+    sensors_data_to_be_sent[1] = Garmin4;
+    Serial.printf("Garmin 4: %0.2f m\n", ((float)Garmin4)/100.0);
+  }
+  
+  if (i2c_spot1_flag == sensors_data_received[2])
+  {
+    Radar1 = sensors_data_received[3];
+    sensors_data_to_be_sent[2] = i2c_spot1_flag;
+    sensors_data_to_be_sent[3] = Radar1;
+    Serial.printf("Radar 1: %d\n", Radar1);
+  }
+  else if (i2c_spot2_flag == sensors_data_received[2])
+  {
+    Radar2 = sensors_data_received[3];
+    sensors_data_to_be_sent[2] = i2c_spot2_flag;
+    sensors_data_to_be_sent[3] = Radar2;
+    Serial.printf("Radar 2: %d\n", Radar2);
+  }
+
+  Wire.beginTransmission(drive_i2c_addr);
+  for (unsigned int i = 0; i < (sizeof(sensors_data_to_be_sent)) / 2; i++)
+  {
+    Wire.write(highByte(sensors_data_to_be_sent[i])); // I2C is byte-oriened Bus
+    Wire.write(lowByte(sensors_data_to_be_sent[i]));
+  }
+  int transmit_result = Wire.endTransmission();
+
+}
